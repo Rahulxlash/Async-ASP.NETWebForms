@@ -1,34 +1,35 @@
-﻿using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using System.Diagnostics;
 
-namespace Mvc4Async.Filters
+namespace Mvc4Async.Filters;
+
+public class UseStopwatchAttribute : ActionFilterAttribute
 {
-    public class UseStopwatchAttribute : ActionFilterAttribute
+    public override void OnActionExecuting(ActionExecutingContext context)
     {
+        var stopWatch = new Stopwatch();
+        stopWatch.Start();
 
-        public override void OnActionExecuting(ActionExecutingContext filterContext)
+        if (context.Controller is Microsoft.AspNetCore.Mvc.Controller controller)
         {
-            Stopwatch stopWatch = new Stopwatch();
-            stopWatch.Start();
-
-            filterContext.Controller.ViewData["stopWatch"] = stopWatch;
-            filterContext.Controller.ViewBag.stopWatch = stopWatch;
+            controller.ViewData["stopWatch"] = stopWatch;
+            controller.ViewBag.stopWatch = stopWatch;
         }
-
-        public override void OnResultExecuting(ResultExecutingContext filterContext)
-        {
-            Stopwatch stopWatch = (Stopwatch)filterContext.Controller.ViewBag.stopWatch;
-            stopWatch.Stop();
-
-            double et = stopWatch.Elapsed.Seconds +
-               (stopWatch.Elapsed.Milliseconds / 1000.0);
-
-            filterContext.Controller.ViewBag.elapsedTime = // stopWatch.Elapsed + " --  " +
-                 et.ToString();
-
-
-        }
-
     }
 
+    public override void OnResultExecuting(ResultExecutingContext context)
+    {
+        if (context.Controller is Microsoft.AspNetCore.Mvc.Controller controller)
+        {
+            if (controller.ViewBag.stopWatch is Stopwatch stopWatch)
+            {
+                stopWatch.Stop();
+
+                double et = stopWatch.Elapsed.Seconds +
+                   (stopWatch.Elapsed.Milliseconds / 1000.0);
+
+                controller.ViewBag.elapsedTime = et.ToString();
+            }
+        }
+    }
 }

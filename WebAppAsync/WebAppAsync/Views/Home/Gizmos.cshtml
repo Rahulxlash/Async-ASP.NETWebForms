@@ -1,0 +1,33 @@
+@model IEnumerable<WebAppAsync.Models.Gizmo>
+
+@{
+    ViewData["Title"] = "Gizmos";
+}
+
+<h2>Gizmos - @ViewBag.SyncOrAsync</h2>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Introduced Date</th>
+            <th>Quantity</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var gizmo in Model)
+        {
+            <tr>
+                <td>@gizmo.Id</td>
+                <td>@gizmo.Name</td>
+                <td>@gizmo.IntroducedDate.ToShortDateString()</td>
+                <td>@gizmo.Quantity</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<p>
+    <a asp-action="Index">Back to Home</a>
+</p>

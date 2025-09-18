@@ -1,0 +1,32 @@
+@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome to WebAppAsync</h1>
+    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+    
+    <div class="row">
+        <div class="col-md-4">
+            <h2>Synchronous Gizmos</h2>
+            <p>
+                View gizmos using synchronous calls to the Web API.
+            </p>
+            <p><a class="btn btn-primary" asp-controller="Home" asp-action="Gizmos">View Gizmos (Sync) &raquo;</a></p>
+        </div>
+        <div class="col-md-4">
+            <h2>Asynchronous Gizmos</h2>
+            <p>
+                View gizmos using asynchronous calls to the Web API.
+            </p>
+            <p><a class="btn btn-primary" asp-controller="Home" asp-action="GizmosAsync">View Gizmos (Async) &raquo;</a></p>
+        </div>
+        <div class="col-md-4">
+            <h2>Cancellable Async Gizmos</h2>
+            <p>
+                View gizmos using asynchronous calls with cancellation token support.
+            </p>
+            <p><a class="btn btn-primary" asp-controller="Home" asp-action="GizmosCancelAsync">View Gizmos (Cancel Async) &raquo;</a></p>
+        </div>
+    </div>
+</div>

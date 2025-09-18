@@ -1,48 +1,47 @@
-﻿using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Text.Json;
 using Mvc4Async.Models;
-using Newtonsoft.Json;
 
-namespace Mvc4Async.Service
+namespace Mvc4Async.Service;
+
+public class WidgetService
 {
-    public class WidgetService
+    private readonly HttpClient _httpClient;
+    private readonly IConfiguration _configuration;
+
+    public WidgetService(HttpClient httpClient, IConfiguration configuration)
     {
-        public async Task<List<Widget>> GetWidgetsAsync(
-        CancellationToken cancelToken = default(CancellationToken))
-        {
-            using (HttpClient httpClient = new HttpClient())
-            {
-                var uri = Util.getServiceUri("widgets");
-                var response = await httpClient.GetAsync(uri, cancelToken);
-                return (await response.Content.ReadAsAsync<List<Widget>>());
-            }
-        }
+        _httpClient = httpClient;
+        _configuration = configuration;
+    }
 
-        // The following method shows the simplest possible async GetAsync
-        // which doesn't use the CancellationToken
-        public async Task<List<Widget>> GetWidgetsAsync()
+    public async Task<List<Widget>> GetWidgetsAsync(CancellationToken cancelToken = default)
+    {
+        var uri = Util.GetServiceUri("widgets", _configuration);
+        var response = await _httpClient.GetAsync(uri, cancelToken);
+        response.EnsureSuccessStatusCode();
+        
+        var json = await response.Content.ReadAsStringAsync(cancelToken);
+        return JsonSerializer.Deserialize<List<Widget>>(json, new JsonSerializerOptions
         {
-            using (HttpClient httpClient = new HttpClient())
-            {
-                var uri = Util.getServiceUri("widgets");
-                var response = await httpClient.GetAsync(uri);
-                return (await response.Content.ReadAsAsync<List<Widget>>());
-            }
+            PropertyNameCaseInsensitive = true
+        }) ?? new List<Widget>();
+    }
 
-        }
+    public async Task<List<Widget>> GetWidgetsAsync()
+    {
+        return await GetWidgetsAsync(CancellationToken.None);
+    }
 
-        public List<Widget> GetWidgets()
+    public List<Widget> GetWidgets()
+    {
+        var uri = Util.GetServiceUri("widgets", _configuration);
+        var response = _httpClient.GetAsync(uri).Result;
+        response.EnsureSuccessStatusCode();
+        
+        var json = response.Content.ReadAsStringAsync().Result;
+        return JsonSerializer.Deserialize<List<Widget>>(json, new JsonSerializerOptions
         {
-            var uri = Util.getServiceUri("widgets");
-            using (WebClient webClient = new WebClient())
-            {
-                return JsonConvert.DeserializeObject<List<Widget>>(
-                    webClient.DownloadString(uri)
-                );
-            }
-        }
+            PropertyNameCaseInsensitive = true
+        }) ?? new List<Widget>();
     }
 }
