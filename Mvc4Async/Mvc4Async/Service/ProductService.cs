@@ -1,36 +1,42 @@
-﻿using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Text.Json;
 using Mvc4Async.Models;
-using Newtonsoft.Json;
 
-namespace Mvc4Async.Service
+namespace Mvc4Async.Service;
+
+public class ProductService
 {
-    public class ProductService
+    private readonly HttpClient _httpClient;
+    private readonly IConfiguration _configuration;
+
+    public ProductService(HttpClient httpClient, IConfiguration configuration)
     {
-        public async Task<List<Product>> GetProductsAsync(
-            CancellationToken cancelToken = default(CancellationToken))
-        {
-            var uri = Util.getServiceUri("products");
-            using (HttpClient httpClient = new HttpClient())
-            {
-                var response = await httpClient.GetAsync(uri, cancelToken);
-                return (await response.Content.ReadAsAsync<List<Product>>());
-            }
+        _httpClient = httpClient;
+        _configuration = configuration;
+    }
 
-        }
-
-        public List<Product> GetProducts()
+    public async Task<List<Product>> GetProductsAsync(CancellationToken cancelToken = default)
+    {
+        var uri = Util.GetServiceUri("products", _configuration);
+        var response = await _httpClient.GetAsync(uri, cancelToken);
+        response.EnsureSuccessStatusCode();
+        
+        var json = await response.Content.ReadAsStringAsync(cancelToken);
+        return JsonSerializer.Deserialize<List<Product>>(json, new JsonSerializerOptions
         {
-            var uri = Util.getServiceUri("products"); ;
-            using (WebClient webClient = new WebClient())
-            {
-                return JsonConvert.DeserializeObject<List<Product>>(
-                    webClient.DownloadString(uri)
-                );
-            }
-        }
+            PropertyNameCaseInsensitive = true
+        }) ?? new List<Product>();
+    }
+
+    public List<Product> GetProducts()
+    {
+        var uri = Util.GetServiceUri("products", _configuration);
+        var response = _httpClient.GetAsync(uri).Result;
+        response.EnsureSuccessStatusCode();
+        
+        var json = response.Content.ReadAsStringAsync().Result;
+        return JsonSerializer.Deserialize<List<Product>>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        }) ?? new List<Product>();
     }
 }

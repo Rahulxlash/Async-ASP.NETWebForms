@@ -1,11 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations;
-namespace WebAppAsync.Models
+using System.ComponentModel.DataAnnotations;
+
+namespace WebAppAsync.Models;
+
+public class Product
 {
-    public class Product
-    {
-        public int Id { get; set; }
-        public string Name { get; set; }
-        [DataType(DataType.Currency)]
-        public decimal Price { get; set; }
-    }
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    [DataType(DataType.Currency)]
+    public decimal Price { get; set; }
 }

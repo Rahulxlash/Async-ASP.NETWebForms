@@ -1,48 +1,47 @@
-﻿using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Text.Json;
 using Mvc4Async.Models;
-using Newtonsoft.Json;
 
-namespace Mvc4Async.Service
+namespace Mvc4Async.Service;
+
+public class GizmoService
 {
-    public class GizmoService
+    private readonly HttpClient _httpClient;
+    private readonly IConfiguration _configuration;
+
+    public GizmoService(HttpClient httpClient, IConfiguration configuration)
     {
-        public async Task<List<Gizmo>> GetGizmosAsync(
-            // Implementation removed.
-            CancellationToken cancelToken = default(CancellationToken))
-        {
-            var uri = Util.getServiceUri("Gizmos");
-            using (HttpClient httpClient = new HttpClient())
-            {
-                var response = await httpClient.GetAsync(uri, cancelToken);
-                return (await response.Content.ReadAsAsync<List<Gizmo>>());
-            }
-        }
+        _httpClient = httpClient;
+        _configuration = configuration;
+    }
 
-        //  Simpler API, no CancellationToken
-        public async Task<List<Gizmo>> GetGizmosAsync()
+    public async Task<List<Gizmo>> GetGizmosAsync(CancellationToken cancelToken = default)
+    {
+        var uri = Util.GetServiceUri("Gizmos", _configuration);
+        var response = await _httpClient.GetAsync(uri, cancelToken);
+        response.EnsureSuccessStatusCode();
+        
+        var json = await response.Content.ReadAsStringAsync(cancelToken);
+        return JsonSerializer.Deserialize<List<Gizmo>>(json, new JsonSerializerOptions
         {
-            var uri = Util.getServiceUri("Gizmos");
-            using (HttpClient httpClient = new HttpClient())
-            {
-                var response = await httpClient.GetAsync(uri);
-                return (await response.Content.ReadAsAsync<List<Gizmo>>());
-            }
-        }
-        // Implementation removed.
+            PropertyNameCaseInsensitive = true
+        }) ?? new List<Gizmo>();
+    }
 
-        public List<Gizmo> GetGizmos()
+    public async Task<List<Gizmo>> GetGizmosAsync()
+    {
+        return await GetGizmosAsync(CancellationToken.None);
+    }
+
+    public List<Gizmo> GetGizmos()
+    {
+        var uri = Util.GetServiceUri("Gizmos", _configuration);
+        var response = _httpClient.GetAsync(uri).Result;
+        response.EnsureSuccessStatusCode();
+        
+        var json = response.Content.ReadAsStringAsync().Result;
+        return JsonSerializer.Deserialize<List<Gizmo>>(json, new JsonSerializerOptions
         {
-            var uri = Util.getServiceUri("Gizmos");
-            using (WebClient webClient = new WebClient())
-            {
-                return JsonConvert.DeserializeObject<List<Gizmo>>(
-                    webClient.DownloadString(uri)
-                );
-            }
-        }
+            PropertyNameCaseInsensitive = true
+        }) ?? new List<Gizmo>();
     }
 }

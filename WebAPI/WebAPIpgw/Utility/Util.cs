@@ -1,53 +1,62 @@
-﻿using System;
-using System.Configuration;
+using Microsoft.Extensions.Configuration;
 
-namespace WebAPIpgw.Utility
+namespace WebAPIpgw.Utility;
+
+public class Util
 {
-    public class Util
+    private static readonly Random random = new();
+    private static IConfiguration? _configuration;
+
+    public static void Initialize(IConfiguration configuration)
     {
-        public static int GetDelay()
-        {
-            return random.Next(Configuration.GetDelayMin(),
-                                 Configuration.GetDelayMax());
-        }
-      
-        static System.Random random = new System.Random();
+        _configuration = configuration;
     }
 
-    public static class Configuration
+    public static int GetDelay()
     {
-       private static int _delayMin = int.MaxValue;
-       private static int _delayMax = int.MaxValue;
+        return random.Next(Configuration.GetDelayMin(),
+                             Configuration.GetDelayMax());
+    }
+}
 
-        public static int getKeyValInt(string key)
-        {
-            int j;
-            bool b = Int32.TryParse(ConfigurationManager.AppSettings[key], out j);
-            if (b)
-                return j;
-            else
-                return 0;
-        }
+public static class Configuration
+{
+    private static int _delayMin = int.MaxValue;
+    private static int _delayMax = int.MaxValue;
+    private static IConfiguration? _configuration;
 
-        public static int GetDelayMin()
-        {
-            if (_delayMin == int.MaxValue)
-                _delayMin = getKeyValInt("DelayMin");
-            return _delayMin;
-        }
+    public static void Initialize(IConfiguration configuration)
+    {
+        _configuration = configuration;
+    }
 
-        public static int GetDelayMax()
-        {
-            if ( _delayMax == int.MaxValue )
-                _delayMax = getKeyValInt("DelayMax");
-            return _delayMax;
-        }
+    public static int GetKeyValInt(string key)
+    {
+        if (_configuration == null)
+            return 0;
 
-        public static string getKeyVal(string key)
-        {
-            return ConfigurationManager.AppSettings[key];
-        }
+        if (int.TryParse(_configuration[key], out int result))
+            return result;
+        else
+            return 0;
+    }
 
+    public static int GetDelayMin()
+    {
+        if (_delayMin == int.MaxValue)
+            _delayMin = GetKeyValInt("DelayMin");
+        return _delayMin;
+    }
 
+    public static int GetDelayMax()
+    {
+        if (_delayMax == int.MaxValue)
+            _delayMax = GetKeyValInt("DelayMax");
+        return _delayMax;
+    }
+
+    public static string? GetKeyVal(string key)
+    {
+        return _configuration?[key];
     }
 }

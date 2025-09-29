@@ -1,53 +1,56 @@
-﻿using System;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Mvc4Async.Models;
-using System.Threading.Tasks;
 using Mvc4Async.Filters;
-using System.Web.UI;
-using System.Threading;
 using Mvc4Async.Service;
 
-namespace Mvc4Async.Controllers
+namespace Mvc4Async.Controllers;
+
+[UseStopwatch]
+[ResponseCache(Location = ResponseCacheLocation.None, NoStore = true)]
+public class HomeController : Controller
 {
-    [UseStopwatch]
-    [OutputCache(Location = OutputCacheLocation.None, NoStore = true)]
-    public class HomeController : Controller
+    private readonly WidgetService _widgetService;
+    private readonly ProductService _productService;
+    private readonly GizmoService _gizmoService;
+
+    public HomeController(WidgetService widgetService, ProductService productService, GizmoService gizmoService)
     {
-        public async Task<ActionResult> PWGasync()
-        {
-            ViewBag.SyncType = "Asynchronous";
-            var widgetService = new WidgetService();
-            var prodService = new ProductService();
-            var gizmoService = new GizmoService();
+        _widgetService = widgetService;
+        _productService = productService;
+        _gizmoService = gizmoService;
+    }
 
-            var widgetTask = widgetService.GetWidgetsAsync();
-            var prodTask = prodService.GetProductsAsync();
-            var gizmoTask = gizmoService.GetGizmosAsync();
+    public async Task<IActionResult> PWGasync()
+    {
+        ViewBag.SyncType = "Asynchronous";
 
-            await Task.WhenAll(widgetTask, prodTask, gizmoTask);
+        var widgetTask = _widgetService.GetWidgetsAsync();
+        var prodTask = _productService.GetProductsAsync();
+        var gizmoTask = _gizmoService.GetGizmosAsync();
 
-            var pwgVM = new ProdGizWidgetVM(
-               widgetTask.Result,
-               prodTask.Result,
-               gizmoTask.Result
-               );
+        await Task.WhenAll(widgetTask, prodTask, gizmoTask);
 
-            return View("PWG", pwgVM);
-        }
+        var pwgVM = new ProdGizWidgetVM(
+           widgetTask.Result,
+           prodTask.Result,
+           gizmoTask.Result
+           );
 
-        [AsyncTimeout(50)]
-        [HandleError(ExceptionType = typeof(TimeoutException), View = "TimeoutError")]
-        public async Task<ActionResult> PWGtimeOut(CancellationToken cancellationToken)
+        return View("PWG", pwgVM);
+    }
+
+    public async Task<IActionResult> PWGtimeOut(CancellationToken cancellationToken)
+    {
+        try
         {
             ViewBag.SyncType = "Asynchronous with CancellationToken";
 
-            var widgetService = new WidgetService();
-            var prodService = new ProductService();
-            var gizmoService = new GizmoService();
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
+            using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
-            var widgetTask = widgetService.GetWidgetsAsync(cancellationToken);
-            var prodTask = prodService.GetProductsAsync(cancellationToken);
-            var gizmoTask = gizmoService.GetGizmosAsync(cancellationToken);
+            var widgetTask = _widgetService.GetWidgetsAsync(combinedCts.Token);
+            var prodTask = _productService.GetProductsAsync(combinedCts.Token);
+            var gizmoTask = _gizmoService.GetGizmosAsync(combinedCts.Token);
 
             await Task.WhenAll(widgetTask, prodTask, gizmoTask);
 
@@ -59,81 +62,86 @@ namespace Mvc4Async.Controllers
 
             return View("PWG", pwgVM);
         }
-
-        public ActionResult PWG()
+        catch (OperationCanceledException)
         {
-            ViewBag.SyncType = "Synchronous";
-            var widgetService = new WidgetService();
-            var prodService = new ProductService();
-            var gizmoService = new GizmoService();
-
-            var pwgVM = new ProdGizWidgetVM(
-                widgetService.GetWidgets(),
-                prodService.GetProducts(),
-                gizmoService.GetGizmos()
-               );
-
-            return View("PWG", pwgVM);
+            return View("TimeoutError");
         }
+    }
 
-        public async Task<ActionResult> WidgetsAsync()
-        {
-            ViewBag.SyncOrAsync = "Asynchronous";
-            var widgetService = new WidgetService();
-            return View("Widgets", await widgetService.GetWidgetsAsync());
-        }
+    public IActionResult PWG()
+    {
+        ViewBag.SyncType = "Synchronous";
 
-        public ActionResult Widgets()
-        {
-            ViewBag.SyncOrAsync = "Synchronous";
-            var widgetService = new WidgetService();
+        var pwgVM = new ProdGizWidgetVM(
+            _widgetService.GetWidgets(),
+            _productService.GetProducts(),
+            _gizmoService.GetGizmos()
+           );
 
-            return View("Widgets", widgetService.GetWidgets());
-        }
+        return View("PWG", pwgVM);
+    }
 
-        [AsyncTimeout(150)]
-        [HandleError(ExceptionType = typeof(TimeoutException),
-                                            View = "TimeoutError")]
-        public async Task<ActionResult> GizmosCancelAsync(
-                               CancellationToken cancellationToken)
+    public async Task<IActionResult> WidgetsAsync()
+    {
+        ViewBag.SyncOrAsync = "Asynchronous";
+        return View("Widgets", await _widgetService.GetWidgetsAsync());
+    }
+
+    public IActionResult Widgets()
+    {
+        ViewBag.SyncOrAsync = "Synchronous";
+        return View("Widgets", _widgetService.GetWidgets());
+    }
+
+    public async Task<IActionResult> GizmosCancelAsync(CancellationToken cancellationToken)
+    {
+        try
         {
             ViewBag.SyncOrAsync = "Asynchronous";
-            var gizmoService = new GizmoService();
-            return View("Gizmos",
-                await gizmoService.GetGizmosAsync(cancellationToken));
-        }
 
-        public async Task<ActionResult> GizmosAsync()
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(150));
+            using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+
+            return View("Gizmos", await _gizmoService.GetGizmosAsync(combinedCts.Token));
+        }
+        catch (OperationCanceledException)
         {
-            ViewBag.SyncOrAsync = "Asynchronous";
-            var gizmoService = new GizmoService();
-            return View("Gizmos", await gizmoService.GetGizmosAsync());
+            return View("TimeoutError");
         }
+    }
 
-        public ActionResult Gizmos()
-        {
-            ViewBag.SyncOrAsync = "Synchronous";
-            var gizmoService = new GizmoService();
-            return View("Gizmos", gizmoService.GetGizmos());
-        }
+    public async Task<IActionResult> GizmosAsync()
+    {
+        ViewBag.SyncOrAsync = "Asynchronous";
+        return View("Gizmos", await _gizmoService.GetGizmosAsync());
+    }
 
-        public async Task<ActionResult> ProductsAsync()
-        {
-            ViewBag.SyncOrAsync = "Asynchronous";
-            var productsService = new ProductService();
-            return View("Products", await productsService.GetProductsAsync());
-        }
+    public IActionResult Gizmos()
+    {
+        ViewBag.SyncOrAsync = "Synchronous";
+        return View("Gizmos", _gizmoService.GetGizmos());
+    }
 
-        public ActionResult Products()
-        {
-            ViewBag.SyncOrAsync = "Synchronous";
-            var prodService = new ProductService();
-            return View("Products", prodService.GetProducts());
-        }
+    public async Task<IActionResult> ProductsAsync()
+    {
+        ViewBag.SyncOrAsync = "Asynchronous";
+        return View("Products", await _productService.GetProductsAsync());
+    }
 
+    public IActionResult Products()
+    {
+        ViewBag.SyncOrAsync = "Synchronous";
+        return View("Products", _productService.GetProducts());
+    }
 
-    } // End of HomeController
-       
+    public IActionResult Index()
+    {
+        return View();
+    }
 
+    public IActionResult Error()
+    {
+        return View();
+    }
 }
 
